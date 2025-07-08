@@ -145,7 +145,8 @@
                         relationship.</p>
                 </remarks>
             </define-field>
-
+            <field ref="relationship-strength"/>
+            <field ref="confidence-score"/>
             <assembly ref="mapping-item" min-occurs="1" max-occurs="unbounded">
                 <use-name>source</use-name>
                 <group-as name="sources" in-json="ARRAY" />
@@ -329,7 +330,8 @@
         <flag ref="matching-rationale" required="yes" />
         <flag ref="status" required="yes" />
         <model>
-            <field ref="confidence-score" min-occurs="1" />
+            <field ref="confidence-score" />
+            <field ref="relationship-strength" />
             <define-field name="mapping-description" as-type="markup-multiline" min-occurs="1"
                 in-xml="WITH_WRAPPER">
                 <formal-name>Mapping Description</formal-name>
@@ -429,14 +431,42 @@
     <!-- ################# -->
     <!-- FIELD DEFINITIONS -->
     <!-- ################# -->
-    <define-field name="confidence-score" as-type="string">
+
+    <define-field name="relationship-strength">
+        <formal-name>Relationship Strength</formal-name>
+        <description>An optional field to record the mapping's author's confidence that the given mapping is accurate.
+        This field is intended to be used in automatically generated mappings,
+        but can be used in human generated mappings as well. Based on relationship strength value as defined by NIST IR 8278.</description>
+        <define-flag name="percentage" as-type="decimal" >
+            <formal-name>Relationship Strength Percentage</formal-name>
+            <description>Strength of the relationship represented by a decimal value between (inclusive) 0.0 and 1.0.</description>
+        </define-flag>
+        <define-flag name="category" as-type="string" >
+            <formal-name>Relationship Strength Percentage</formal-name>
+            <description>Strength of the relationship represented by a string with the value "low", "medium", or "high".</description>
+            <constraint>
+            <allowed-values>
+                <enum value="low"></enum>
+                <enum value="medium"></enum>
+                <enum value="high"></enum>
+            </allowed-values>
+        </constraint>
+        </define-flag>
+    </define-field>
+
+    <define-field name="confidence-score" as-type="decimal">
         <formal-name>Confidence Score</formal-name>
-        <description>If automation is used, this can record a confidence score, if assigned.</description>
+        <description>An optional field to record the mapping's author's confidence that the given mapping is accurate.
+        This field is intended to be used in automatically generated mappings,
+        but can be used in human generated mappings as well.</description>
     </define-field>
 
     <!-- ################ -->
     <!-- FLAG DEFINITIONS -->
     <!-- ################ -->
+    
+
+
     <define-flag name="matching-rationale" as-type="string">
         <formal-name>Matching</formal-name>
         <description>The method used for relating controls within the mapping. The supported methods
