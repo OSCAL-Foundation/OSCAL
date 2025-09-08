@@ -215,7 +215,7 @@
             <formal-name>Resource Type</formal-name>
             <description>The semantic type of the resource.</description>
             <constraint>
-                <allowed-values allow-others="yes">
+                <allowed-values allow-other="yes">
                     <enum value="catalog">The mapped resource is a control catalog.</enum>
                     <enum value="profile">The mapped resource is a control profile. A resolved
                         profile is also accepted.</enum>
