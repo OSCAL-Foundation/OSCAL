@@ -434,8 +434,7 @@
         <description>If automation is used, this can record a confidence score, if assigned.</description>
     </define-field>
 
-    <define-field name="mapping-description" as-type="markup-multiline" min-occurs="0" max-occurs="1"
-        in-xml="WITH_WRAPPER">
+    <define-field name="mapping-description" as-type="markup-multiline">
         <formal-name>Mapping Description</formal-name>
         <description>Description of the context and intended use of the mapping set.</description>
         <remarks> <p>The value of this field applies to the entire document if found in the top-level 
