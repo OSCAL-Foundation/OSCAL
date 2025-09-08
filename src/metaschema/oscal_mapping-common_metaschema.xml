@@ -334,7 +334,7 @@
         <flag ref="status" required="yes" />
         <model>
             <field ref="confidence-score" min-occurs="0" max-occurs="1" />
-            <flag ref="coverage" min-occurs="0" max-occurs="1" />
+            <field ref="coverage" min-occurs="0" max-occurs="1" />
             <define-field name="mapping-description" as-type="markup-multiline" min-occurs="1"
                 in-xml="WITH_WRAPPER">
                 <formal-name>Mapping Description</formal-name>
@@ -440,7 +440,7 @@
         that this mapping is correct and accurate. </description>
         <define-flag name="category" as-type="string" required="no">
             <constraint>
-                <allowed-values allow-others="yes">
+                <allowed-values allow-other="yes">
                     <enum value="unspecified">No category is specified for the confidence score.</enum>
                     <enum value="high">High confidence in the mapping.</enum>
                     <enum value="medium">Medium confidence in the mapping.</enum>
@@ -454,7 +454,7 @@
     <define-field name="coverage" as-type="decimal">
         <define-flag name="generation-method" as-type="string" required="no" default="arbitrary">
             <constraint>
-                <allowed-values allow-others="yes">
+                <allowed-values allow-other="yes">
                     <enum value="arbitrary">The coverage value is a qualitative estimate of coverage with no strict formula.</enum>
                 </allowed-values>
             </constraint>
@@ -466,7 +466,7 @@
             <p>Coverage is calculated by taking the full set of all targets in-scope and the full set of all sources in-scope, then applying the "generation-method" to the two sets.
              By default the method is an arbitrary estimation of coverage.</p>
             <p>In a general sense "coverage" is defined as the percent of the set of targets that have mapped to by the set of sources, 
-            where each map is an "equivalent-to" or "equal-to" valued "relationship". Where relationship is "subset-of" or otherwise, it counts as an appropiate fraction of a full map. </p>
+            where each map is an "equivalent-to" or "equal-to" valued "relationship". Where relationship is "subset-of" or otherwise, it counts as an appropriate fraction of a full map. </p>
             <p> Since coverage is derived from mapping relationships, it is defined in the context of the mapping's "matching-rationale" - that is, the method used to determine relationships.</p>
         </remarks>
     </define-field>
