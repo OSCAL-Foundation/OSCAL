@@ -7,16 +7,17 @@ Documentation for the OSCAL models can be found at: https://pages.nist.gov/OSCAL
 
 # Release Contents
 
-This release provides 2 types of resources, each located in a different subdirectory:
+This release provides the following resources, each located in a different subdirectory:
 
-- `xml/` and `json/`: Provides the XML and JSON schemas and content converters that are needed to support the OSCAL model. Instructions for using these artifacts can be found at https://github.com/usnistgov/OSCAL/blob/develop/build/README.md#artifact-usage
-- `metaschema/`: Provides the source OSCAL Metaschema modules with all external entities (XXE) resolved for tools that do not support XXEs.
+- `xml/schema/`: XML Schema Definition (XSD) files for validating OSCAL XML content.
+- `json/schema/`: JSON Schema files for validating OSCAL JSON content.
+- `metaschema/`: Source OSCAL Metaschema definition modules with all external entities (XXE) resolved for tools that do not support XXEs.
+
+Instructions for using these artifacts, including schema validation and content conversion with oscal-cli, can be found at https://github.com/usnistgov/OSCAL/blob/develop/build/README.md#artifact-usage
 
 These directories provide stable, released versions of the resources provided on the OSCAL GitHub repository: https://github.com/usnistgov/OSCAL.
 
 Please note that OSCAL content examples, which were once included in these archives are now located at: https://github.com/usnistgov/oscal-content.
-
-If you have existing content targeting the previous `oscal-version` from a prior release, you can use the content upgrade transforms to upgrade them to this release as documented in this directory's README: https://github.com/usnistgov/OSCAL/tree/main/src/release/content-upgrade/.
 
 # The OSCAL Roadmap
 

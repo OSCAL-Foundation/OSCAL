@@ -15,6 +15,7 @@ backup*
 working/
 __pycache__
 xspec/
+.worktrees/
 
 # test reports
 testing/*.html
@@ -49,6 +50,12 @@ target/
 
 #
 node_modules/
+
+# Build outputs
+/build/generated*/
+/build/out/
+# Auto-downloaded oscal-cli
+/build/bin/
 
 # Files build by CI/CD
 /docs/content/documentation/specification/processing/profile-resolution.html

@@ -1,4 +1,0 @@
-/node_modules/
-# Ignore all variations of generated_* directories
-/generated*/
-/out/
