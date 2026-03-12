@@ -14,10 +14,10 @@ help: ## Show this help message
 all: artifacts checks archives ## Run all pipelines
 
 .PHONY: artifacts
-artifacts: schemas converters resolved-metaschemas ## Generate all artifacts
+artifacts: schemas ## Generate all artifacts
 
 .PHONY: checks
-checks: linkcheck validate test-profile-resolution ## Run all tests and checks
+checks: validate linkcheck ## Run all tests and checks
 
 .PHONY: dependencies
 dependencies: node_modules ## Ensure dependencies have been installed
@@ -26,9 +26,36 @@ node_modules: package.json package-lock.json
 	npm ci
 
 .PHONY: clean
-clean: clean-schemas clean-linkcheck clean-converters clean-archives clean-resolved-metaschemas ## Remove all generated content
+clean: clean-schemas clean-linkcheck clean-archives ## Remove all generated content
 
-METASCHEMA_XSLT_COMMAND:=metaschema-xslt/bin/metaschema-xslt
+# oscal-cli configuration
+OSCAL_CLI_VERSION:=3.1.0
+OSCAL_CLI_DOWNLOAD_URL:=https://repo1.maven.org/maven2/dev/metaschema/oscal/oscal-cli-enhanced/$(OSCAL_CLI_VERSION)/oscal-cli-enhanced-$(OSCAL_CLI_VERSION)-oscal-cli.tar.bz2
+OSCAL_CLI_DIR:=bin/oscal-cli
+OSCAL_CLI_ARCHIVE:=$(OSCAL_CLI_DIR)/oscal-cli-enhanced-$(OSCAL_CLI_VERSION)-oscal-cli.tar.bz2
+OSCAL_CLI_BIN:=$(OSCAL_CLI_DIR)/bin/oscal-cli
+
+# Use oscal-cli from PATH if available, otherwise use local installation
+OSCAL_CLI_COMMAND:=$(or $(shell command -v oscal-cli 2>/dev/null),$(OSCAL_CLI_BIN))
+
+.PHONY: install-oscal-cli
+install-oscal-cli: ## Install oscal-cli if not available in PATH
+ifeq ($(shell command -v oscal-cli 2>/dev/null),)
+install-oscal-cli: $(OSCAL_CLI_BIN)
+endif
+
+$(OSCAL_CLI_BIN):
+	@echo "oscal-cli not found in PATH, downloading version $(OSCAL_CLI_VERSION)..."
+	@command -v curl >/dev/null 2>&1 || { echo "Error: curl is required but not installed."; exit 1; }
+	@command -v bzip2 >/dev/null 2>&1 || { echo "Error: bzip2 is required but not installed."; exit 1; }
+	@mkdir -p $(OSCAL_CLI_DIR)
+	curl -fL -o "$(OSCAL_CLI_ARCHIVE)" "$(OSCAL_CLI_DOWNLOAD_URL)"
+	@echo "Extracting oscal-cli..."
+	@tar -xjf "$(OSCAL_CLI_ARCHIVE)" -C $(OSCAL_CLI_DIR)
+	@rm "$(OSCAL_CLI_ARCHIVE)"
+	@echo "oscal-cli installed to $(OSCAL_CLI_DIR)"
+	@chmod +x $(OSCAL_CLI_BIN)
+
 SRC_DIR:=../src/metaschema
 # Contains all OSCAL metaschema modules, including those without exported roots
 ALL_METASCHEMAS:=$(shell find $(SRC_DIR) -name '*_metaschema.xml')
@@ -45,60 +72,16 @@ JSONSCHEMA_OUTPUTS:=$(patsubst $(SRC_DIR)/%_metaschema.xml,$(GENERATED_DIR)/%_sc
 
 $(GENERATED_DIR)/%_schema.json $(GENERATED_DIR)/%_schema.xsd: $(SRC_DIR)/%_metaschema.xml
 	@mkdir -p $(GENERATED_DIR)
-	$(METASCHEMA_XSLT_COMMAND) schema-gen $(SRC_DIR)/$*_metaschema.xml $(GENERATED_DIR) $*
-
+	$(OSCAL_CLI_COMMAND) metaschema generate-schema --as=json --overwrite $(SRC_DIR)/$*_metaschema.xml $(GENERATED_DIR)/$*_schema.json
+	$(OSCAL_CLI_COMMAND) metaschema generate-schema --as=xml --overwrite $(SRC_DIR)/$*_metaschema.xml $(GENERATED_DIR)/$*_schema.xsd
 .PHONY: schemas
-schemas: $(XSD_OUTPUTS) $(JSONSCHEMA_OUTPUTS) ## Generate the schemas
+
+schemas: install-oscal-cli $(XSD_OUTPUTS) $(JSONSCHEMA_OUTPUTS) ## Generate the schemas
 
 .PHONY: clean-schemas
 clean-schemas: ## Remove generated schemas
 	rm -fr $(GENERATED_DIR)/*_schema.*
 
-########################
-# Converter Generation #
-########################
-
-XML2JSON_CONVERTERS:=$(patsubst $(SRC_DIR)/%_metaschema.xml,$(GENERATED_DIR)/%_xml-to-json-converter.xsl,$(METASCHEMAS))
-JSON2XML_CONVERTERS:=$(patsubst $(SRC_DIR)/%_metaschema.xml,$(GENERATED_DIR)/%_json-to-xml-converter.xsl,$(METASCHEMAS))
-
-$(GENERATED_DIR)/%_xml-to-json-converter.xsl $(GENERATED_DIR)/%_json-to-xml-converter.xsl: $(SRC_DIR)/%_metaschema.xml
-	@mkdir -p $(GENERATED_DIR)
-	$(METASCHEMA_XSLT_COMMAND) converter-gen $(SRC_DIR)/$*_metaschema.xml $(GENERATED_DIR) $*
-
-.PHONY: converters
-converters: $(XML2JSON_CONVERTERS) $(JSON2XML_CONVERTERS) ## Generate the converters
-
-.PHONY: clean-converters
-clean-converters: ## Remove generated converters
-	rm -fr $(GENERATED_DIR)/*_xml-to-json-converter.xsl
-	rm -fr $(GENERATED_DIR)/*_json-to-xml-converter.xsl
-
-###################################
-# Resolved Metaschemas Generation #
-###################################
-
-POM_PATH:=./pom.xml
-define EXEC_SAXON
-	mvn --quiet -f "$(POM_PATH)" exec:java \
-    	-Dexec.mainClass="net.sf.saxon.Transform" \
-		-Dexec.args="$1"
-endef
-
-RESOLVER_STYLESHEET:=./resolve-entities.xsl
-
-RESOLVED_METASCHEMA_SUFFIX:=RESOLVED
-RESOLVED_METASCHEMAS:=$(patsubst $(SRC_DIR)/%_metaschema.xml,$(GENERATED_DIR)/%_metaschema_$(RESOLVED_METASCHEMA_SUFFIX).xml,$(ALL_METASCHEMAS))
-
-$(GENERATED_DIR)/%_metaschema_$(RESOLVED_METASCHEMA_SUFFIX).xml: $(SRC_DIR)/%_metaschema.xml
-	@mkdir -p $(GENERATED_DIR)
-	$(call EXEC_SAXON,-s:$(SRC_DIR)/$*_metaschema.xml -xsl:$(RESOLVER_STYLESHEET) -o:$@ importHrefSuffix=$(RESOLVED_METASCHEMA_SUFFIX))
-
-.PHONY: resolved-metaschemas
-resolved-metaschemas: $(RESOLVED_METASCHEMAS) ## Generate the resolved metaschema modules
-
-.PHONY: clean-resolved-metaschemas
-clean-resolved-metaschemas: ## Remove generated resolvd metaschema modules
-	rm -f $(RESOLVED_METASCHEMAS)
 
 ######################
 # Archive Generation #
@@ -110,18 +93,17 @@ TARBZ2_ARCHIVE:=$(GENERATED_DIR)/oscal-$(RELEASE).tar.bz2
 ARCHIVE_TEMP_DIR:=$(GENERATED_DIR)/archive_temp
 
 .PHONY: archives
-archives: $(ZIP_ARCHIVE) ## Archive converters and schemas
+archives: $(ZIP_ARCHIVE) ## Archive schemas and metaschemas
 
-$(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE): converters schemas resolved-metaschemas
+$(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE): schemas
 	@echo Generating archive
-	mkdir -p $(ARCHIVE_TEMP_DIR)/{{json,xml}/{convert,schema},metaschema}
+	@command -v zip >/dev/null 2>&1 || { echo "Error: zip is required but not installed."; exit 1; }
+	mkdir -p $(ARCHIVE_TEMP_DIR)/{{json,xml}/schema,metaschema}
 	cp ../src/release/release-readme.txt "$(ARCHIVE_TEMP_DIR)/README.txt"
 	cp $(XSD_OUTPUTS) "$(ARCHIVE_TEMP_DIR)/xml/schema"
 	cp $(JSONSCHEMA_OUTPUTS) "$(ARCHIVE_TEMP_DIR)/json/schema"
-	cp $(XML2JSON_CONVERTERS) "$(ARCHIVE_TEMP_DIR)/xml/convert"
-	cp $(JSON2XML_CONVERTERS) "$(ARCHIVE_TEMP_DIR)/json/convert"
-	cp $(RESOLVED_METASCHEMAS) "$(ARCHIVE_TEMP_DIR)/metaschema"
 
+	cp $(ALL_METASCHEMAS) "$(ARCHIVE_TEMP_DIR)/metaschema"
 	(cd "$(ARCHIVE_TEMP_DIR)" && zip -r $(abspath $(ZIP_ARCHIVE)) .)
 	tar -jcvf "$(TARBZ2_ARCHIVE)" -C "$(ARCHIVE_TEMP_DIR)" .
 
@@ -129,7 +111,7 @@ $(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE): converters schemas resolved-metaschemas
 	rm -fr $(ARCHIVE_TEMP_DIR)
 
 .PHONY: clean-archives
-clean-archives: ## Clean generated archive of converters and schemas
+clean-archives: ## Clean generated archives
 	rm -fr $(ARCHIVE_TEMP_DIR)
 	rm -fr $(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE)
 
@@ -167,7 +149,7 @@ clean-linkcheck: ## Remove linkcheck log
 #######################
 
 .PHONY: validate
-validate: validate-jsonschemas validate-xsds validate-composition ## Validate all generated content
+validate: validate-jsonschemas validate-xsds validate-metaschemas ## Validate all generated content
 
 .PHONY: validate-jsonschemas
 validate-jsonschemas: node_modules $(JSONSCHEMA_OUTPUTS) ## Validate generated JSON Schemas
@@ -177,21 +159,15 @@ validate-jsonschemas: node_modules $(JSONSCHEMA_OUTPUTS) ## Validate generated J
 .PHONY: validate-xsds
 validate-xsds: $(XSD_OUTPUTS) ## Validate generated XSD files
 	@echo Validating generated XSDs
+	@command -v xmllint >/dev/null 2>&1 || { echo "Error: xmllint is required but not installed. Install libxml2-utils."; exit 1; }
 	xmllint --noout $(XSD_OUTPUTS)
 
-VALIDATE_COMPOSITION_TARGETS:=$(patsubst $(SRC_DIR)/oscal_%_metaschema.xml,validate-composition-%,$(METASCHEMAS))
-
-.PHONY: validate-composition
-validate-composition: $(VALIDATE_COMPOSITION_TARGETS) ## Validate source metaschemas
-
-validate-composition-%:
-	@echo Performing composition validation of the $* model via schematron
-	$(METASCHEMA_XSLT_COMMAND) composition-validate $(SRC_DIR)/oscal_$*_metaschema.xml
-
-.IGNORE: test-profile-resolution # TODO: fix up the profile resolution tests
-.PHONY: test-profile-resolution
-test-profile-resolution: ## Unit test the profile resolver
-	$(MAKE) -C ../src/utils/resolver-pipeline test
+.PHONY: validate-metaschemas
+validate-metaschemas: install-oscal-cli ## Validate source metaschemas
+	@for metaschema in $(ALL_METASCHEMAS); do \
+		echo "Validating $$metaschema"; \
+		$(OSCAL_CLI_COMMAND) metaschema validate "$$metaschema" || exit 1; \
+	done
 
 ###################
 # Utility Targets #
@@ -200,7 +176,7 @@ test-profile-resolution: ## Unit test the profile resolver
 # These targets may be used by consumers of the OSCAL repository
 
 # All artifacts typically included in a release
-RELEASE_ARTIFACTS:=$(XSD_OUTPUTS) $(JSONSCHEMA_OUTPUTS) $(XML2JSON_CONVERTERS) $(JSON2XML_CONVERTERS) $(RESOLVED_METASCHEMAS) $(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE)
+RELEASE_ARTIFACTS:=$(XSD_OUTPUTS) $(JSONSCHEMA_OUTPUTS) $(ZIP_ARCHIVE) $(TARBZ2_ARCHIVE)
 
 # This target is used by OSCAL-Reference to generate meta-redirects for release assets
 .PHONY: list-release-artifacts
